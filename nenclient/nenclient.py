@@ -7,63 +7,48 @@
 import zmq
 import nengo
 import numpy as np
+import ctypes
 
-class Controller:
-  
+class Client:
   def __init__(self):
-    self.vector = np.array([0,0])
+    self.context = zmq.Context()
+    print("Connecting to server...")
+    self.socket = self.context.socket(zmq.REQ)
+    self.socket.connect("tcp://localhost:5555")
 
-  def update(self):
-    self.vector = np.array([0,0])
+  def put(self, t, x):
+    self.socket.send_string("t=" + str(t) + ", x=" + str(x))
 
   def get(self, t):
-    return self.vector
+    message = self.socket.recv()
+    print("Received reply [ %s ]" % (message))
+    return np.array([20, 0])
 
-
-if __name__ == "__main__":
   print("-----NENCLIENT------")
 
-  controller = Controller()
 
-  context = zmq.Context()
 
-  #  Socket to talk to server
-  print("Connecting to hello world server…")
-  socket = context.socket(zmq.REQ)
-  socket.connect("tcp://localhost:5555")
+client = Client()
+client.put(0, "start")
 
-  # Set up neurosns
-  model = nengo.Network(label='2D Representation')
-  with model:
-      # Our ensemble consists of 100 leaky integrate-and-fire neurons,
-      # and represents a 2-dimensional signal
-      neurons = nengo.Ensemble(100, dimensions=1, radius=200)
+# Set up neurons
+model = nengo.Network()
+with model:
+    # Our ensemble consists of 100 leaky integrate-and-fire neurons,
+    # and represents a 2-dimensional signal
+    neurons = nengo.Ensemble(500, dimensions=2, radius=200)
 
-      # Create input nodes representing the sine and cosine
-      ctrlNode = nengo.Node(output = 0.1)
+    inNode = nengo.Node(client.get)
+    outNode = nengo.Node(client.put, size_in = 2)
+    # The indices in neurons define which dimension the input will project to
+    nengo.Connection(inNode, neurons)
+    nengo.Connection(neurons, outNode)
 
-      # The indices in neurons define which dimension the input will project to
-      nengo.Connection(ctrlNode, neurons)
+    neurons_probe = nengo.Probe(neurons, 'decoded_output', synapse=0.01)
 
-      nengo.Connection(neurons, neurons)
-
-      neurons_probe = nengo.Probe(neurons, 'decoded_output', synapse=0.01)
+if __name__ == "__main__":
 
   #  Do 10 requests, waiting each time for a response
   with nengo.Simulator(model) as sim:
     while (1):
-
-        controller.update()
-        print("Sending request …")
-      
         sim.step()
-        out = sim.data[neurons_probe]
-        if len(out) > 1:
-          data = out[-1]
-        else:
-          data = out[0]
-
-        socket.send_string(str(data))
-        #  Get the reply.
-        message = socket.recv()
-        print("Received reply [ %s ]" % (message))
