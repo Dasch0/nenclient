@@ -4,7 +4,6 @@
 #   Expects b"Hello" from client, replies with b"World"
 #
 
-import time
 import zmq
 
 print("test")
@@ -19,4 +18,4 @@ while True:
     print("Received request: %s" % message)
 
     #  Send reply back to client
-    socket.send(b"World")
+    socket.send(b"7,6,5,4,3,2,1,0")
