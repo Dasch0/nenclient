@@ -90,9 +90,9 @@ def vInhibitController():
     with model:
 
         # Neuron ensembles
-        vel_error = nengo.Ensemble(500, dimensions=2, radius=500)
-        pos_error = nengo.Ensemble(500, dimensions=2, radius=500)
-        f_controller = nengo.Ensemble(500, dimensions=2, radius=50)
+        vel_error = nengo.Ensemble(100, dimensions=2, radius=100)
+        pos_error = nengo.Ensemble(100, dimensions=2, radius=500)
+        f_controller = nengo.Ensemble(100, dimensions=2, radius=50)
 
         # Non-neural nodes and functions
         socket_in = nengo.Node(client.get, size_out=8)
@@ -111,15 +111,12 @@ def vInhibitController():
         nengo.Connection(pos_in, pos_error)
         nengo.Connection(goalPos_in, pos_error, transform=[[-1, 0], [0, -1]])
         nengo.Connection(vel_in, vel_error)
-        nengo.Connection(goalVel_in, vel_error, transform=[[-1, 0], [0, -1]])
-        nengo.Connection(vel_error, pos_error,
-                         transform=[[15, 0], [15, 0]])
+        nengo.Connection(goalVel_in, vel_error, transform=[[-2, 0], [0, -2]])
+        nengo.Connection(vel_error, pos_error.neurons,
+                         transform=[[.1, .1]] * 100)
 
         nengo.Connection(pos_error, f_controller)
         nengo.Connection(vel_error, f_controller)
         nengo.Connection(f_controller, socket_out)
 
     return model
-
-
-
