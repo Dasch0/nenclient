@@ -10,7 +10,7 @@ import networks
 
 print("-----NENCLIENT------")
 
-model = networks.modelController()
+model = networks.divider()
 
 if __name__ == "__main__":
     with nengo.Simulator(model) as sim:

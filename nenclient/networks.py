@@ -131,7 +131,7 @@ def vInhibitctrl(neuronCount=1000):
     return model
 
 
-def modelController(neuronCount=1000, tau=0.001):
+def modelController(neuronCount=100, tau=0.001):
     client = Client()
     # Set up neurons
     model = nengo.Network()
@@ -142,7 +142,7 @@ def modelController(neuronCount=1000, tau=0.001):
         control = nengo.Ensemble(neuronCount, dimensions=2, radius=100, label='control')
         enModel = nengo.Ensemble(neuronCount, dimensions=4, radius=100, label='enModel')
         feedback = nengo.Ensemble(neuronCount, dimensions=4, radius=100, label='feedback')
-        # oracle = nengo.Ensemble(neuronCount, dimensions=4, radius=1000)
+        oracle = nengo.Ensemble(neuronCount, dimensions=4, radius=100)
 
         # Non-neural nodes and functions
         socket_in = nengo.Node(client.get, size_out=8, label='socket_in')
@@ -171,8 +171,8 @@ def modelController(neuronCount=1000, tau=0.001):
                          control,
                          synapse=tau,
                          solver=LstsqL2(weights=True),
-                         transform=[[1, 0, 4, 0],
-                                    [0, 1, 0, 4]])
+                         transform=[[1, 0, 10, 0],
+                                    [0, 1, 0, 10]])
 
         # Create model of system by double integrating control
         model_conn = nengo.Connection(control,
@@ -184,14 +184,13 @@ def modelController(neuronCount=1000, tau=0.001):
                                                  [-tau, 0],
                                                  [0, -tau]])
         model_fb_conn = nengo.Connection(enModel,
-                         enModel,
-                         synapse=tau,
-                         solver=LstsqL2(weights=True),
-                         transform=[[0, 0, 0, 0],
-                                    [0, 0, 0, 0],
-                                    [0, 0, 1, 0],
-                                    [0, 0, 0, 1]])
-
+                                         enModel,
+                                         synapse=tau,
+                                         solver=LstsqL2(weights=True),
+                                         transform=[[1, 0, 1, 0],
+                                                    [0, 1, 0, 1],
+                                                    [0, 0, 1, 0],
+                                                    [0, 0, 0, 1]])
         # Create feedback signals that compare the models to the actual states
         nengo.Connection(enModel,
                          feedback,
@@ -217,5 +216,32 @@ def modelController(neuronCount=1000, tau=0.001):
         nengo.Connection(control,
                          socket_out,
                          synapse=tau)
+
+    return model
+
+
+def divider(neuronCount=1000, tau=0.002):
+    # Set up neurons
+    model = nengo.Network()
+
+    with model:
+        dividend = nengo.Node(size_in=1, size_out=1)
+        divisor = nengo.Node(size_in=1, size_out=1)
+        combine = nengo.Ensemble(neuronCount, dimensions=2, radius=200, label='combine')
+        quotient = nengo.Ensemble(neuronCount, dimensions=1, radius=10, label='quotient')
+
+        nengo.Connection(dividend,
+                         combine,
+                         synapse=tau,
+                         transform=[[1], [0]])
+        nengo.Connection(divisor,
+                         combine,
+                         synapse=tau,
+                         transform=[[0], [1]])
+        nengo.Connection(combine,
+                         quotient,
+                         synapse=tau,
+                         solver=LstsqL2(weights=True),
+                         function=lambda x: x[1] / (x[0] + 0.001))
 
     return model
